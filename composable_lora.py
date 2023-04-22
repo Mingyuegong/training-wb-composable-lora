@@ -76,6 +76,10 @@ def add_step_counters():
 def log_lora():
     import lora
     tmp_data : List[float] = []
+    if len(lora.loaded_loras) <= 0:
+        tmp_data = [0.0]
+        if len(drawing_lora_names) <= 0:
+            drawing_lora_names.append("LoRA Model Not Found.")
     for m_lora in lora.loaded_loras:
         current_lora = m_lora.name
         multiplier = m_lora.multiplier
@@ -97,6 +101,9 @@ def log_lora():
 
 def plot_lora():
     max_size = -1
+    if len(drawing_data) < num_steps:
+        item = drawing_data[len(drawing_data) - 1] if len(drawing_data) > 0 else [0.0]
+        drawing_data.extend([item]*(num_steps - len(drawing_data)))
     drawing_data.insert(0, drawing_lora_first_index)
     for datalist in drawing_data:
         datalist_len = len(datalist)
