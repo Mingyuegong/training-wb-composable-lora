@@ -224,7 +224,7 @@ def lora_forward(compvis_module, input, res):
                         res += multiplier * alpha * patch
                 else:
                     # uc
-                    if (opt_uc_text_model_encoder or is_single_block) and m_lora.multiplier != 0.0:
+                    if (opt_uc_text_model_encoder or (is_single_block and (not opt_single_no_uc))) and m_lora.multiplier != 0.0:
                         # print(f"uc #{text_model_encoder_counter // num_loras} lora.name={m_lora.name} lora.mul={m_lora.multiplier}  lora_layer_name={lora_layer_name}")
                         res += m_lora.multiplier * alpha * patch
 
@@ -254,7 +254,7 @@ def lora_forward(compvis_module, input, res):
                             tensor_off += 1
 
                         # uc
-                        if (opt_uc_diffusion_model or is_single_block) and m_lora.multiplier != 0.0:
+                        if (opt_uc_diffusion_model or (is_single_block and (not opt_single_no_uc))) and m_lora.multiplier != 0.0:
                             # print(f"uncond lora.name={m_lora.name} lora.mul={m_lora.multiplier} lora_layer_name={lora_layer_name}")
                             multiplier = m_lora.multiplier
                             if is_single_block and opt_composable_with_step:
@@ -282,7 +282,7 @@ def lora_forward(compvis_module, input, res):
                                     res[off] += multiplier * alpha * patch[off]
                     else:
                         # uc
-                        if (opt_uc_diffusion_model or is_single_block) and m_lora.multiplier != 0.0:
+                        if (opt_uc_diffusion_model or (is_single_block and (not opt_single_no_uc))) and m_lora.multiplier != 0.0:
                             # print(f"uc {lora_layer_name} lora.name={m_lora.name} lora.mul={m_lora.multiplier}")
                             multiplier = m_lora.multiplier
                             if is_single_block and opt_composable_with_step:
@@ -342,6 +342,7 @@ opt_composable_with_step = False
 opt_uc_text_model_encoder = False
 opt_uc_diffusion_model = False
 opt_plot_lora_weight = False
+opt_single_no_uc = False
 verbose = True
 
 drawing_lora_names : List[str] = []
