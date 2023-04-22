@@ -108,6 +108,17 @@ With this disabled, you can expect better output.
 ### plot the LoRA weight in all steps
 If "Composable LoRA with step" is enabled, you can select this option to generate a chart that shows the relationship between LoRA weight and the number of steps after the drawing is completed. This allows you to observe the variation of LoRA weight at each step.
 
+### Other
+* If the image you generated becomes like this:
+  ![](readme/fig10.png)
+  try the following steps to solve it:
+  1. Disable Composable LoRA first
+  2. Temporarily remove all LoRA from your prompt
+  3. Randomly generate a image
+  4. If the image of the habitat is normal, enable Composable LoRA again
+  5. Add the LoRA you just removed back to the prompt
+  6. It should be able to generate pictures normally
+
 ## Compatibilities
 `--always-batch-cond-uncond` must be enabled  with `--medvram` or `--lowvram`
 

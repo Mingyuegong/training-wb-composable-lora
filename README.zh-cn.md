@@ -108,6 +108,17 @@ https://github.com/a2569875/stable-diffusion-webui-composable-lora.git
 ### 绘制LoRA权重与步数关系的图表 (plot the LoRA weight in all steps)
 如果有勾选\[Composable LoRA with step\]，可以勾选此选项来观察LoRA权重在每个步骤数上的变化
 
+### 其他
+* 如果你产生的图片崩成这样:
+  ![](readme/fig10.png)
+  可尝试以下步骤解决:
+  1. 先关闭Composable LoRA 
+  2. 从你的提示词中暂时移除所有LoRA
+  3. 随便生成一张图片
+  4. 如果产生的图片是正常的，再次开启Composable LoRA
+  5. 再把刚才移除的LoRA加回去提示词中 (注意，要先开启Composable LoRA再加入LoRA语法)
+  6. 应该就能正常产生图片了 
+
 ## 兼容性
 `--always-batch-cond-uncond`必须与`--medvram`或`--lowvram`一起使用
 
