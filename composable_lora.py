@@ -118,7 +118,8 @@ def lora_forward(compvis_module, input, res):
 
     if not first_log_drawing:
         first_log_drawing = True
-        print("Composable LoRA load successful.")
+        if enabled:
+            print("Composable LoRA load successful.")
         if opt_plot_lora_weight:
             log_lora()
             drawing_lora_first_index = drawing_data[0]
@@ -169,8 +170,8 @@ def lora_forward(compvis_module, input, res):
         #if current lora already apply, skip this lora
         if lora_already_used == True:
             continue
-
-        if shared.opts.lora_apply_to_outputs and res.shape == input.shape:
+        
+        if getattr(shared.opts, "lora_apply_to_outputs", False) and res.shape == input.shape:
             if hasattr(module, 'inference'):
                 patch = module.inference(res)
             elif hasattr(module, 'up'):
