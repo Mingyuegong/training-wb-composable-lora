@@ -52,10 +52,10 @@ class ComposableLoraScript(scripts.Script):
         composable_lora.num_batches = p.batch_size
         composable_lora.num_steps = p.steps
 
-        if composable_lora.should_reload() and enabled:
+        if (composable_lora.should_reload() or (torch.nn.Linear.forward != composable_lora.lora_Linear_forward)) and enabled:
             torch.nn.Linear.forward = composable_lora.lora_Linear_forward
             torch.nn.Conv2d.forward = composable_lora.lora_Conv2d_forward
-
+ 
         composable_lora.reset_step_counters()
 
         prompt = p.all_prompts[0]
