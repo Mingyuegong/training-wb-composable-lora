@@ -129,6 +129,9 @@ https://github.com/a2569875/stable-diffusion-webui-composable-lora.git
 ### 2023-04-21
 * 实现控制LoRA在不同步骤数能有不同权重的方法`[A #xxx]`
 * 绘制LoRA权重在不同步骤数之变化的图表
+### 2023-04-22
+* 修正: AttributeError: 'Options' object has no attribute 'lora_apply_to_outputs'
+* 修正: RuntimeError: "addmm_impl_cpu_" not implemented for 'Half'
 
 ## 铭谢
 *  [Composable LoRA原始作者opparco](https://github.com/opparco)、[Composable LoRA](https://github.com/opparco/stable-diffusion-webui-composable-lora)

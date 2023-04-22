@@ -129,6 +129,9 @@ If "Composable LoRA with step" is enabled, you can select this option to generat
 ### 2023-04-21
 * Implemented the method to control different weights of LoRA at different steps (`[A #xxx]`)
 * Plotted a chart of LoRA weight changes at different steps
+### 2023-04-22
+* Fixed error: AttributeError: 'Options' object has no attribute 'lora_apply_to_outputs'
+* Fixed error: RuntimeError: "addmm_impl_cpu_" not implemented for 'Half'
 
 ## Acknowledgements
 *  [opparco, Composable LoRA original author](https://github.com/opparco)、[Composable LoRA](https://github.com/opparco/stable-diffusion-webui-composable-lora)

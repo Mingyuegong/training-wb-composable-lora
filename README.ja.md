@@ -128,6 +128,9 @@ LoRAの挿入箇所を`AND`構文と関連付け、LoRAの影響範囲を特定�
 ### 2023-04-21
 * 異なるステップ数でのLoRAの重みを制御する方法の実装 `[A #xxx]`
 * 異なるステップ数でのLoRAの重み変化を示すグラフの作成
+### 2023-04-22
+* 不具合を修正: AttributeError: 'Options' object has no attribute 'lora_apply_to_outputs'
+* 不具合を修正: RuntimeError: "addmm_impl_cpu_" not implemented for 'Half'
 
 ## 特別な感謝
 *  [opparco: Composable LoRAの元の作者である](https://github.com/opparco)、[Composable LoRA](https://github.com/opparco/stable-diffusion-webui-composable-lora)

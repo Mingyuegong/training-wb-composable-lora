@@ -2,6 +2,7 @@ from typing import List, Dict
 import re
 import torch
 import composable_lora_step
+import composable_lycoris
 import plot_helper
 from modules import extra_networks, shared
 
@@ -107,6 +108,7 @@ def plot_lora():
             drawing_data[i].extend([0.0]*(max_size - datalist_len))
     return plot_helper.plot_lora_weight(drawing_data, drawing_lora_names)
 
+
 def lora_forward(compvis_module, input, res):
     global text_model_encoder_counter
     global diffusion_model_counter
@@ -171,6 +173,10 @@ def lora_forward(compvis_module, input, res):
         if lora_already_used == True:
             continue
         
+        if composable_lycoris.is_loha(module):
+            if input.is_cuda:
+                composable_lycoris.pass_loha_to_gpu(module)
+
         if getattr(shared.opts, "lora_apply_to_outputs", False) and res.shape == input.shape:
             if hasattr(module, 'inference'):
                 patch = module.inference(res)
