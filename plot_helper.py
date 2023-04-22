@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, List, Union
+from typing import List
 import io
 import matplotlib
 matplotlib.use('Agg')

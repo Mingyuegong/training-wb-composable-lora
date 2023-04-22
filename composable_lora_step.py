@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List
 import re
 import json
 import math
@@ -6,7 +6,7 @@ import sys
 import traceback
 import random
 
-from modules import extra_networks, shared
+from modules import extra_networks
 
 re_AND = re.compile(r"\bAND\b")
 
