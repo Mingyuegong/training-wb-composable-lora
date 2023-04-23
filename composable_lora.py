@@ -18,7 +18,7 @@ def load_prompt_loras(prompt: str):
     drawing_data.clear()
     full_controllers.clear()
     drawing_lora_names.clear()
-
+    #load AND...AND block
     subprompts = re_AND.split(prompt)
     tmp_prompt_loras = []
     tmp_prompt_blocks = []
@@ -33,10 +33,17 @@ def load_prompt_loras(prompt: str):
         tmp_prompt_loras.append(loras)
         tmp_prompt_blocks.append(subprompt)
     is_single_block = (len(tmp_prompt_loras) == 1)
-    prompt_loras.extend(tmp_prompt_loras * num_batches)
+
+    #load [A:B:N] syntax
+    if opt_composable_with_step:
+        print("Loading LoRA step controller...")
     tmp_lora_controllers = composable_lora_step.parse_step_rendering_syntax(prompt)
+
+    #for batches > 1
+    prompt_loras.extend(tmp_prompt_loras * num_batches)
     lora_controllers.extend(tmp_lora_controllers * num_batches)
     prompt_blocks.extend(tmp_prompt_blocks * num_batches)
+
     for controller_it in tmp_lora_controllers:
         full_controllers += controller_it
     first_log_drawing = False
@@ -153,18 +160,8 @@ def lora_forward(compvis_module, input, res):
     for m_lora in lora.loaded_loras:
         module = m_lora.modules.get(lora_layer_name, None)
         if module is None:
-            #fix the loCon issue
-            if lora_layer_name.endswith("_11_mlp_fc2"):  # locon doesn't has _11_mlp_fc2 layer
-                text_model_encoder_counter += 1
-                # c1 c1 c2 c2 .. .. uc uc
-                if text_model_encoder_counter == (len(prompt_loras) + num_batches) * num_loras:
-                    text_model_encoder_counter = 0
-            if lora_layer_name.endswith("_11_1_proj_out"):  # locon doesn't has _11_1_proj_out layer
-                diffusion_model_counter += res.shape[0]
-                # c1 c2 .. uc
-                if diffusion_model_counter >= (len(prompt_loras) + num_batches) * num_loras:
-                    diffusion_model_counter = 0
-                    add_step_counters()
+            #fix the lyCORIS issue
+            composable_lycoris.check_lycoris_end_layer(lora_layer_name, res, num_loras)
             continue
 
         current_lora = m_lora.name
@@ -180,35 +177,9 @@ def lora_forward(compvis_module, input, res):
         if lora_already_used == True:
             continue
         
-        if composable_lycoris.is_loha(module):
-            if input.is_cuda:
-                composable_lycoris.pass_loha_to_gpu(module)
-
-        if getattr(shared.opts, "lora_apply_to_outputs", False) and res.shape == input.shape:
-            if hasattr(module, 'inference'):
-                patch = module.inference(res)
-            elif hasattr(module, 'up'):
-                patch = module.up(module.down(res))
-            else:
-                raise NotImplementedError(
-                    "Your settings, extensions or models are not compatible with each other."
-                )
-        else:
-            if hasattr(module, 'inference'):
-                patch = module.inference(input)
-            elif hasattr(module, 'up'):
-                patch = module.up(module.down(input))
-            else:
-                raise NotImplementedError(
-                    "Your settings, extensions or models are not compatible with each other."
-                )
-   
-        alpha : float = 1.0
-        if hasattr(module, 'up'):
-            alpha = (module.alpha / module.up.weight.shape[1] if module.alpha else 1.0)
-        else: #handle if module.up is undefined
-            alpha = (module.alpha / module.dim if module.alpha else 1.0)
-
+        #support for lyCORIS
+        patch = composable_lycoris.get_lora_patch(module, input, res)
+        alpha = composable_lycoris.get_lora_alpha(module, 1.0)
         num_prompts = len(prompt_loras)
 
         # print(f"lora.name={m_lora.name} lora.mul={m_lora.multiplier} alpha={alpha} pat.shape={patch.shape}")
@@ -331,7 +302,7 @@ def lora_Conv2d_forward(self, input):
 
 def should_reload():
     #pytorch 2.0 should reload
-    match = re.search(r"\d+\.\d+",str(torch.__version__)) 
+    match = re.search(r"\d+(\.\d+)?",str(torch.__version__)) 
     if not match:
         return True
     ver = float(match.group(0))

@@ -1,4 +1,49 @@
 import torch
+from modules import shared
+
+def get_lora_patch(module, input, res):
+    if is_loha(module):
+        if input.is_cuda: #if is cuda, pass to cuda; otherwise do nothing
+            pass_loha_to_gpu(module)
+    if getattr(shared.opts, "lora_apply_to_outputs", False) and res.shape == input.shape:
+        if hasattr(module, 'inference'): #support for lyCORIS
+            return module.inference(res)
+        elif hasattr(module, 'up'):     #LoRA
+            return module.up(module.down(res))
+        else:
+            raise NotImplementedError(
+                "Your settings, extensions or models are not compatible with each other."
+            )
+    else:
+        if hasattr(module, 'inference'): #support for lyCORIS
+            return module.inference(input)
+        elif hasattr(module, 'up'):     #LoRA
+            return module.up(module.down(input))
+        else:
+            raise NotImplementedError(
+                "Your settings, extensions or models are not compatible with each other."
+            )
+        
+def get_lora_alpha(module, default_val):
+    if hasattr(module, 'up'):
+        return (module.alpha / module.up.weight.shape[1] if module.alpha else default_val)
+    elif hasattr(module, 'dim'): #support for lyCORIS
+        return (module.alpha / module.dim if module.alpha else default_val)
+    else:
+        return default_val
+    
+def check_lycoris_end_layer(lora_layer_name: str, res, num_loras):
+    if lora_layer_name.endswith("_11_mlp_fc2") or lora_layer_name.endswith("_11_1_proj_out"):
+        import composable_lora as lora_controller
+        if lora_layer_name.endswith("_11_mlp_fc2"):  # lyCORIS maybe doesn't has _11_mlp_fc2 layer
+            lora_controller.text_model_encoder_counter += 1
+            if lora_controller.text_model_encoder_counter == (len(lora_controller.prompt_loras) + lora_controller.num_batches) * num_loras:
+                lora_controller.text_model_encoder_counter = 0
+        if lora_layer_name.endswith("_11_1_proj_out"):  # lyCORIS maybe doesn't has _11_1_proj_out layer
+            lora_controller.diffusion_model_counter += res.shape[0]
+            if lora_controller.diffusion_model_counter >= (len(lora_controller.prompt_loras) + lora_controller.num_batches) * num_loras:
+                lora_controller.diffusion_model_counter = 0
+                lora_controller.add_step_counters()
 
 def is_loha(m_lora):
     return hasattr(m_lora, 'w1a') or hasattr(m_lora, 'w1b') or hasattr(m_lora, 'w2a') or hasattr(m_lora, 'w2b')

@@ -143,6 +143,8 @@ If "Composable LoRA with step" is enabled, you can select this option to generat
 ### 2023-04-22
 * Fixed error: AttributeError: 'Options' object has no attribute 'lora_apply_to_outputs'
 * Fixed error: RuntimeError: "addmm_impl_cpu_" not implemented for 'Half'
+### 2023-04-23
+* Fixed the problem that sometimes LoRA cannot be removed after being added
 
 ## Acknowledgements
 *  [opparco, Composable LoRA original author](https://github.com/opparco)、[Composable LoRA](https://github.com/opparco/stable-diffusion-webui-composable-lora)

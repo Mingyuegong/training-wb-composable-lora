@@ -56,7 +56,7 @@ class ComposableLoraScript(scripts.Script):
 
         composable_lora.backup_lora_Linear_forward = torch.nn.Linear.forward
         composable_lora.backup_lora_Conv2d_forward = torch.nn.Conv2d.forward
-        if (composable_lora.should_reload() or (torch.nn.Linear.forward != composable_lora.lora_Linear_forward)) and enabled:
+        if (composable_lora.should_reload() or (torch.nn.Linear.forward != composable_lora.lora_Linear_forward)):
             torch.nn.Linear.forward = composable_lora.lora_Linear_forward
             torch.nn.Conv2d.forward = composable_lora.lora_Conv2d_forward
  
@@ -64,15 +64,13 @@ class ComposableLoraScript(scripts.Script):
 
         prompt = p.all_prompts[0]
         composable_lora.load_prompt_loras(prompt)
-        if opt_composable_with_step:
-            print("Loading LoRA step controller...")
 
     def process_batch(self, p: StableDiffusionProcessing, *args, **kwargs):
         composable_lora.reset_counters()
 
     def postprocess(self, p, processed, *args):
+        torch.nn.Linear.forward = composable_lora.backup_lora_Linear_forward
+        torch.nn.Conv2d.forward = composable_lora.backup_lora_Conv2d_forward
         if composable_lora.enabled:
-            torch.nn.Linear.forward = composable_lora.backup_lora_Linear_forward
-            torch.nn.Conv2d.forward = composable_lora.backup_lora_Conv2d_forward
             if composable_lora.opt_plot_lora_weight:
                 processed.images.extend([composable_lora.plot_lora()])

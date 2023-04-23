@@ -143,6 +143,8 @@ https://github.com/a2569875/stable-diffusion-webui-composable-lora.git
 ### 2023-04-22
 * 修正: AttributeError: 'Options' object has no attribute 'lora_apply_to_outputs'
 * 修正: RuntimeError: "addmm_impl_cpu_" not implemented for 'Half'
+### 2023-04-23
+* 修正有時候LoRA加上去後會無法移除的問題 (症狀 : 崩圖。)
 
 ## 銘謝
 *  [Composable LoRA原始作者opparco](https://github.com/opparco)、[Composable LoRA](https://github.com/opparco/stable-diffusion-webui-composable-lora)
