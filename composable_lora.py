@@ -185,6 +185,7 @@ def log_lora():
     drawing_data.append(tmp_data)
 
 def plot_lora():
+    """Plot the LoRA weight chart"""
     max_size = -1
     if len(drawing_data) < num_steps:
         item = drawing_data[len(drawing_data) - 1] if len(drawing_data) > 0 else [0.0]

@@ -5,7 +5,6 @@ import torch
 import gradio as gr
 
 import composable_lora
-import composable_lycoris
 import composable_lora_function_handler
 import modules.scripts as scripts
 from modules import script_callbacks
