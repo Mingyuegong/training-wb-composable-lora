@@ -160,6 +160,29 @@ class FullModule:
     def inference(self, x):
         return self.op(x, self.weight, **self.extra_args)
 
+class IA3Module:
+    def __init__(self):
+        self.w = None
+        self.alpha = None
+        self.on_input = None
+        self.shape = None
+        self.op = None
+        self.extra_args = {}
+
+    def down(self, x):
+        return x
+    
+    def inference(self, x):
+        if self.shape is None:
+            output_shape = [self.w.size(0), x.size(1)]
+        else:
+            output_shape = [self.w.size(0), self.shape[1]]
+        if self.on_input:
+            output_shape.reverse()
+        else:
+            self.w = self.w.reshape(-1, 1)
+        return self.op(x, self.w.view(output_shape), bias=None, **self.extra_args)
+
 class LoraUpDownModule:
     def __init__(self):
         self.up_model = None
@@ -349,6 +372,19 @@ def convert_lycoris(lycoris_module, sd_module):
             }
         setattr(lycoris_module, "lyco_converted_lora_module", result_module)
         return result_module
+    elif lycoris_module.__class__.__name__ == "IA3Module":
+        result_module = IA3Module()
+        result_module.w = lycoris_module.w
+        result_module.alpha = lycoris_module.alpha
+        result_module.on_input = lycoris_module.on_input
+        if hasattr(sd_module, 'weight'):
+            result_module.shape = sd_module.weight.shape
+        if (type(sd_module) == torch.nn.Linear
+            or type(sd_module) == torch.nn.modules.linear.NonDynamicallyQuantizableLinear
+            or type(sd_module) == torch.nn.MultiheadAttention):
+            result_module.op = torch.nn.functional.linear
+        elif type(sd_module) == torch.nn.Conv2d:
+            result_module.op = torch.nn.functional.conv2d
     elif lycoris_module.__class__.__name__ == "LycoHadaModule" or lycoris_module.__class__.__name__ == "LoraHadaModule":
         result_module = LoraHadaModule()
         result_module.t1 = lycoris_module.t1
