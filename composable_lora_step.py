@@ -211,10 +211,12 @@ def check_lora_weight(controllers : List[LoRA_Controller_Base], test_lora : str,
 def get_lora_list(prompt: str):
     result : List[LoRA_data] = []
     _, extra_network_data = extra_networks.parse_prompt(prompt)
-    for params in extra_network_data['lora']:
-        name = params.items[0]
-        multiplier = float(params.items[1]) if len(params.items) > 1 else 1.0
-        result.append(LoRA_data(name, multiplier))
+    for m_type in ['lora', 'lyco']:
+        if m_type in extra_network_data.keys():
+            for params in extra_network_data[m_type]:
+                name = params.items[0]
+                multiplier = float(params.items[1]) if len(params.items) > 1 else 1.0
+                result.append(LoRA_data(f"{m_type}:{name}", multiplier))
 
     if len(result) <= 0:
         result.append(LoRA_data("", 0.0))

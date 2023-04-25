@@ -5,6 +5,8 @@ import torch
 import gradio as gr
 
 import composable_lora
+import composable_lycoris
+import composable_lora_function_handler
 import modules.scripts as scripts
 from modules import script_callbacks
 from modules.processing import StableDiffusionProcessing
@@ -14,10 +16,16 @@ def unload():
     torch.nn.Conv2d.forward = torch.nn.Conv2d_forward_before_lora
 
 if not hasattr(torch.nn, 'Linear_forward_before_lora'):
-    torch.nn.Linear_forward_before_lora = torch.nn.Linear.forward
+    if hasattr(torch.nn, 'Linear_forward_before_lyco'):
+        torch.nn.Linear_forward_before_lora = torch.nn.Linear_forward_before_lyco
+    else:
+        torch.nn.Linear_forward_before_lora = torch.nn.Linear.forward
 
 if not hasattr(torch.nn, 'Conv2d_forward_before_lora'):
-    torch.nn.Conv2d_forward_before_lora = torch.nn.Conv2d.forward
+    if hasattr(torch.nn, 'Conv2d_forward_before_lyco'):
+        torch.nn.Conv2d_forward_before_lora = torch.nn.Conv2d_forward_before_lyco
+    else:
+        torch.nn.Conv2d_forward_before_lora = torch.nn.Conv2d.forward
 
 torch.nn.Linear.forward = composable_lora.lora_Linear_forward
 torch.nn.Conv2d.forward = composable_lora.lora_Conv2d_forward
@@ -40,18 +48,10 @@ class ComposableLoraScript(scripts.Script):
                 opt_uc_diffusion_model = gr.Checkbox(value=False, label="Use Lora in uc diffusion model")
                 opt_plot_lora_weight = gr.Checkbox(value=False, label="Plot the LoRA weight in all steps")
                 opt_single_no_uc = gr.Checkbox(value=False, label="Don't use LoRA in uc if there're no subprompts")
-                unload_ext = gr.Checkbox(value=False, label="Unload (If you got a corrupted image, try uncheck [Enabled] and checking this option and generate an image without LoRA, and then turn off this option.)")
-        def enabled_changed(opt_enabled: bool, opt_unload_ext: bool):
-            if opt_enabled:
-                unload_ext.interactive=False
-                return False
-            else:
-                unload_ext.interactive=True
-                return opt_unload_ext
-        enabled.change(enabled_changed, inputs=[enabled, unload_ext], outputs=[unload_ext]) 
-        return [enabled, opt_composable_with_step, opt_uc_text_model_encoder, opt_uc_diffusion_model, opt_plot_lora_weight, opt_single_no_uc, unload_ext]
 
-    def process(self, p: StableDiffusionProcessing, enabled: bool, opt_composable_with_step: bool, opt_uc_text_model_encoder: bool, opt_uc_diffusion_model: bool, opt_plot_lora_weight: bool, opt_single_no_uc: bool, unload_ext : bool):
+        return [enabled, opt_composable_with_step, opt_uc_text_model_encoder, opt_uc_diffusion_model, opt_plot_lora_weight, opt_single_no_uc]
+
+    def process(self, p: StableDiffusionProcessing, enabled: bool, opt_composable_with_step: bool, opt_uc_text_model_encoder: bool, opt_uc_diffusion_model: bool, opt_plot_lora_weight: bool, opt_single_no_uc: bool):
         composable_lora.enabled = enabled
         composable_lora.opt_uc_text_model_encoder = opt_uc_text_model_encoder
         composable_lora.opt_uc_diffusion_model = opt_uc_diffusion_model
@@ -62,13 +62,7 @@ class ComposableLoraScript(scripts.Script):
         composable_lora.num_batches = p.batch_size
         composable_lora.num_steps = p.steps
 
-        composable_lora.backup_lora_Linear_forward = torch.nn.Linear.forward
-        composable_lora.backup_lora_Conv2d_forward = torch.nn.Conv2d.forward
-        if (composable_lora.should_reload() or (torch.nn.Linear.forward != composable_lora.lora_Linear_forward)):
-            if enabled or not unload_ext:
-                torch.nn.Linear.forward = composable_lora.lora_Linear_forward
-                torch.nn.Conv2d.forward = composable_lora.lora_Conv2d_forward
- 
+        composable_lora_function_handler.on_enable()
         composable_lora.reset_step_counters()
 
         prompt = p.all_prompts[0]
@@ -78,8 +72,7 @@ class ComposableLoraScript(scripts.Script):
         composable_lora.reset_counters()
 
     def postprocess(self, p, processed, *args):
-        torch.nn.Linear.forward = composable_lora.backup_lora_Linear_forward
-        torch.nn.Conv2d.forward = composable_lora.backup_lora_Conv2d_forward
+        composable_lora_function_handler.on_disable()
         if composable_lora.enabled:
             if composable_lora.opt_plot_lora_weight:
                 processed.images.extend([composable_lora.plot_lora()])

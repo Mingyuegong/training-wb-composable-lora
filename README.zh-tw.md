@@ -1,5 +1,5 @@
 # Composable LoRA/LyCORIS with steps
-這個擴展取代了內置的 forward LoRA 過程，同時提供對LoCon、LyCORIS的支援
+這個擴展取代了內置的 forward LoRA 過程，同時提供對LoCon、LyCORIS的支援。
 
 本擴展Fork自Composable LoRA擴展
 
@@ -145,6 +145,8 @@ https://github.com/a2569875/stable-diffusion-webui-composable-lora.git
 * 修正: RuntimeError: "addmm_impl_cpu_" not implemented for 'Half'
 ### 2023-04-23
 * 修正有時候LoRA加上去後會無法移除的問題 (症狀 : 崩圖。)
+### 2023-04-25
+* 加入對`<lyco:MODEL>`語法的支援。
 
 ## 銘謝
 *  [Composable LoRA原始作者opparco](https://github.com/opparco)、[Composable LoRA](https://github.com/opparco/stable-diffusion-webui-composable-lora)
