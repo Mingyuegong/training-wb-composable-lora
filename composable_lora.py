@@ -71,7 +71,7 @@ def lora_forward(compvis_module, input, res):
         num_prompts = len(prompt_loras)
 
         # print(f"lora.name={m_lora.name} lora.mul={m_lora.multiplier} alpha={alpha} pat.shape={patch.shape}")
-        res = apply_composable_lora(lora_layer_name, m_lora, "lora", patch, alpha, res, num_loras, num_prompts)
+        res = apply_composable_lora(lora_layer_name, m_lora, module, "lora", patch, alpha, res, num_loras, num_prompts)
     return res
 
 re_AND = re.compile(r"\bAND\b")
@@ -230,7 +230,7 @@ def clear_cache_lora(compvis_module):
         setattr(compvis_module, "lora_current_names", ())
         setattr(compvis_module, "lyco_current_names", ())  
 
-def apply_composable_lora(lora_layer_name, m_lora, m_type: str, patch, alpha, res, num_loras, num_prompts):
+def apply_composable_lora(lora_layer_name, m_lora, module, m_type: str, patch, alpha, res, num_loras, num_prompts):
     global text_model_encoder_counter
     global diffusion_model_counter
     global step_counter
@@ -246,13 +246,13 @@ def apply_composable_lora(lora_layer_name, m_lora, m_type: str, patch, alpha, re
                 if multiplier != 0.0:
                     multiplier = composable_lycoris.lycoris_get_multiplier(m_lora, lora_layer_name)
                     # print(f"c #{text_model_encoder_counter // num_loras} lora.name={m_lora_name} mul={multiplier}  lora_layer_name={lora_layer_name}")
-                    res += multiplier * alpha * patch
+                    res = composable_lycoris.composable_forward(module, patch, alpha, multiplier, res)
             else:
                 # uc
                 multiplier = composable_lycoris.lycoris_get_multiplier(m_lora, lora_layer_name)
                 if (opt_uc_text_model_encoder or (is_single_block and (not opt_single_no_uc))) and multiplier != 0.0:
                     # print(f"uc #{text_model_encoder_counter // num_loras} lora.name={m_lora_name} lora.mul={multiplier}  lora_layer_name={lora_layer_name}")
-                    res += multiplier * alpha * patch
+                    res = composable_lycoris.composable_forward(module, patch, alpha, multiplier, res)
 
             if lora_layer_name.endswith("_11_mlp_fc2"):  # last lora_layer_name of text_model_encoder
                 text_model_encoder_counter += 1
@@ -277,7 +277,7 @@ def apply_composable_lora(lora_layer_name, m_lora, m_type: str, patch, alpha, re
                         if multiplier != 0.0:
                             multiplier *= composable_lycoris.lycoris_get_multiplier_normalized(m_lora, lora_layer_name)
                             # print(f"tensor #{b}.{p} lora.name={m_lora_name} mul={multiplier} lora_layer_name={lora_layer_name}")
-                            res[tensor_off] += multiplier * alpha * patch[tensor_off]
+                            res[tensor_off] = composable_lycoris.composable_forward(module, patch[tensor_off], alpha, multiplier, res[tensor_off])
                         tensor_off += 1
 
                     # uc
@@ -287,7 +287,7 @@ def apply_composable_lora(lora_layer_name, m_lora, m_type: str, patch, alpha, re
                         if is_single_block and opt_composable_with_step:
                             multiplier = composable_lora_step.check_lora_weight(full_controllers, m_lora_name, step_counter, num_steps)
                             multiplier *= composable_lycoris.lycoris_get_multiplier_normalized(m_lora, lora_layer_name)
-                        res[uncond_off] += multiplier * alpha * patch[uncond_off]
+                        res[uncond_off] = composable_lycoris.composable_forward(module, patch[uncond_off], alpha, multiplier, res[uncond_off])
                     
                     uncond_off += 1
             else:
@@ -308,7 +308,7 @@ def apply_composable_lora(lora_layer_name, m_lora, m_type: str, patch, alpha, re
                             if multiplier != 0.0:
                                 multiplier *= composable_lycoris.lycoris_get_multiplier_normalized(m_lora, lora_layer_name)
                                 # print(f"c #{base + off} lora.name={m_lora_name} mul={multiplier} lora_layer_name={lora_layer_name}")
-                                res[off] += multiplier * alpha * patch[off]
+                                res[off] = composable_lycoris.composable_forward(module, patch[off], alpha, multiplier, res[off])
                 else:
                     # uc
                     multiplier = composable_lycoris.lycoris_get_multiplier(m_lora, lora_layer_name)
@@ -317,7 +317,7 @@ def apply_composable_lora(lora_layer_name, m_lora, m_type: str, patch, alpha, re
                         if is_single_block and opt_composable_with_step:
                             multiplier = composable_lora_step.check_lora_weight(full_controllers, m_lora_name, step_counter, num_steps)
                             multiplier *= composable_lycoris.lycoris_get_multiplier_normalized(m_lora, lora_layer_name)
-                        res += multiplier * alpha * patch
+                        res = composable_lycoris.composable_forward(module, patch, alpha, multiplier, res)
 
                 if lora_layer_name.endswith("_11_1_proj_out"):  # last lora_layer_name of diffusion_model
                     diffusion_model_counter += cur_num_prompts
@@ -330,13 +330,13 @@ def apply_composable_lora(lora_layer_name, m_lora, m_type: str, patch, alpha, re
             multiplier = composable_lycoris.lycoris_get_multiplier(m_lora, lora_layer_name)
             if multiplier != 0.0:
                 # print(f"default {lora_layer_name} lora.name={m_lora_name} lora.mul={m_lora.multiplier}")
-                res += multiplier * alpha * patch
+                res = composable_lycoris.composable_forward(module, patch, alpha, multiplier, res)
     else:
         # default
         multiplier = composable_lycoris.lycoris_get_multiplier(m_lora, lora_layer_name)
         if multiplier != 0.0:
             # print(f"DEFAULT {lora_layer_name} lora.name={m_lora_name} lora.mul={m_lora.multiplier}")
-            res += multiplier * alpha * patch
+            res = composable_lycoris.composable_forward(module, patch, alpha, multiplier, res)
     return res
 
 def lora_Linear_forward(self, input):

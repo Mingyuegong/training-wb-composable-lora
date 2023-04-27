@@ -52,9 +52,14 @@ def lycoris_forward(compvis_module, input, res):
         num_prompts = len(lora_controller.prompt_loras)
 
         # print(f"lora.name={m_lora.name} lora.mul={m_lora.multiplier} alpha={alpha} pat.shape={patch.shape}")
-        res = lora_controller.apply_composable_lora(lycoris_layer_name, m_lycoris, "lyco", patch, alpha, res, num_loras, num_prompts)
+        res = lora_controller.apply_composable_lora(lycoris_layer_name, m_lycoris, converted_module, "lyco", patch, alpha, res, num_loras, num_prompts)
 
     return res
+
+def composable_forward(module, patch, alpha, multiplier, res):
+    if hasattr(module, 'composable_forward'):
+        return module.composable_forward(patch, alpha, multiplier, res)
+    return res + multiplier * alpha * patch
 
 def get_lora_inference(module, input):
     if hasattr(module, 'inference'): #support for lyCORIS
@@ -173,15 +178,11 @@ class IA3Module:
         return x
     
     def inference(self, x):
-        if self.shape is None:
-            output_shape = [self.w.size(0), x.size(1)]
-        else:
-            output_shape = [self.w.size(0), self.shape[1]]
-        if self.on_input:
-            output_shape.reverse()
-        else:
-            self.w = self.w.reshape(-1, 1)
-        return self.op(x, self.w.view(output_shape), bias=None, **self.extra_args)
+        return self.op(x, self.w, **self.extra_args)
+    
+    def composable_forward(self, patch, alpha, multiplier, res):
+        patch = patch.to(res.dtype)
+        return res * (1 + patch * alpha * multiplier)
 
 class LoraUpDownModule:
     def __init__(self):
