@@ -233,7 +233,7 @@ re_extra_net = re.compile(r"<([^>]+):([^>]+)>")
 re_python_escape = re.compile(r"\$\$PYTHON_OBJ\$\$(\d+)\^")
 re_python_escape_x = re.compile(r"\$\$PYTHON_OBJX?\$\$(\d+)\^")
 re_sd_step_render = re.compile(r"\[[^\[\]]+\]")
-re_super_cmd = re.compile(r"#([^:#\[\]]+)")
+re_super_cmd = re.compile(r"(\\u0023|#)([^:#\[\]]+)")
 
 class MySearchResult:
     def __init__(self):
@@ -356,7 +356,7 @@ def get_LoRA_Controllers(prompt: str):
     super_cmd = re.search(re_super_cmd, prompt)
     Weight_Controller = LoRA_Weight_CMD()
     if super_cmd:
-        super_cmd_text = unescape_string(super_cmd.group(1)).strip()
+        super_cmd_text = unescape_string(super_cmd.group(2)).strip()
         if super_cmd_text.startswith("cmd("):
             Weight_Controller = LoRA_Weight_eval(super_cmd_text[4:-1])
         elif super_cmd_text.startswith("decrease"):
