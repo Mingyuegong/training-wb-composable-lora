@@ -29,6 +29,9 @@ https://github.com/a2569875/stable-diffusion-webui-composable-lora.git
 
 ### LoRA 權重控制
 添加了一個語法`[A #xxx]`可以用來控制LoRA在每個繪圖步驟的權重
+
+如果 `#` 不起作用，您可以將 `#` 符號替換為 `\u0023`。
+
 目前支援的有:
 * `decrease`
      - 在LoRA的有效步驟數內逐漸遞減權重直到0
@@ -82,9 +85,21 @@ https://github.com/a2569875/stable-diffusion-webui-composable-lora.git
 * `[<lora:A:1> #cmd\(sin\(life\)\):20]`
      - 在名為A的LoRA使用期間，權重為正弦波，且從第10步才開始使用此LoRA
        ![](readme/fig7.png)
+```python
+[<lora:A:1> #cmd\(
+def my_func\(\)\:
+    return sin\(life\)
+my_func\(\)
+\):10]
+```
+- 與`[<lora:A:1> #cmd\(sin\(life\)\):10]`相同，但用了函數語法
 
 所有生成的圖像 :
 ![](readme/fig8.png)
+
+* 提示 :
+   - 如果`[<lora:A:1> #cmd\(sin\(life\)\):10]`沒有作用的話，試試`[<lora:A:1> \u0023cmd\(sin\(life\)\):10]`。
+   - 如果`[<lora:A:1> #increment:10]`沒有作用的話，試試`[<lora:A:1> \u0023increment:10]` 。
 
 ### 消除對反向提示詞的影響
 使用內建的 LoRA 時，反向提示詞總是受到 LoRA 的影響。 這通常會對輸出產生負面影響。

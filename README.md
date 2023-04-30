@@ -29,6 +29,9 @@ By placing LoRA within a prompt in the form of `[A:B:N]`, the scope of LoRA's ef
 
 ### LoRA weight controller
 Added a syntax `[A #xxx]` to control the weight of LoRA at each drawing step. 
+
+You can replace the `#` symbol with `\u0023`, if `#` didn't work.
+
 Currently supported options are:
 * `decrease`
      - Gradually decrease weight within the effective steps of LoRA until 0.
@@ -82,9 +85,22 @@ Example :
 * `[<lora:A:1> #cmd\(sin\(life\)\):10]`
      - During the usage of LoRA named A, set the weight to a sine wave, starting from step 10.
        ![](readme/fig7.png)
+```python
+[<lora:A:1> #cmd\(
+def my_func\(\)\:
+    return sin\(life\)
+my_func\(\)
+\):10]
+```
+- same as `[<lora:A:1> #cmd\(sin\(life\)\):10]`, but using function syntax.
 
 All the image:
 ![](readme/fig8.png)
+
+* Note : 
+   - Try `[<lora:A:1> \u0023cmd\(sin\(life\)\):10]` if `[<lora:A:1> #cmd\(sin\(life\)\):10]` doesn't work.
+   - Try `[<lora:A:1> \u0023increment:10]` if `[<lora:A:1> #increment:10]` doesn't work.
+
 
 ### Eliminate the impact on negative prompts
 With the built-in LoRA, negative prompts are always affected by LoRA. This often has a negative impact on the output.

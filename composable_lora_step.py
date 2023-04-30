@@ -1,5 +1,7 @@
 from typing import List
 import re
+import ast
+import copy
 import json
 import math
 import sys
@@ -9,6 +11,54 @@ import random
 from modules import extra_networks
 
 re_AND = re.compile(r"\bAND\b")
+
+class Runable:
+    """
+    like exec() but can return values
+    https://stackoverflow.com/a/52361938/5862977
+    """
+    def __init__(self, code : str, code_name : str = "<prompt>"):
+        self.code = code
+        self.code_name = code_name
+        self.compiled = False
+        try:
+            self.compile_self()
+        except Exception:
+            pass
+
+    def compile_self(self):
+        self.code_ast = ast.parse(self.code, self.code_name)
+        self.init_ast = copy.deepcopy(self.code_ast)
+        self.init_ast.body = self.code_ast.body[:-1]
+
+        self.last_ast = copy.deepcopy(self.code_ast)
+        self.last_ast.body = self.code_ast.body[-1:]
+
+        self.full_bin = compile(self.code_ast, self.code_name, "exec")
+        self.start_bin = compile(self.init_ast, self.code_name, "exec")
+        if type(self.last_ast.body[0]) == ast.Expr:
+            self.run_bin = compile(self.convertExpr2Expression(self.last_ast.body[0]), self.code_name, "eval")
+        else:
+            self.end_bin = compile(self.last_ast, self.code_name, "exec")
+
+        self.compiled = True
+
+    def convertExpr2Expression(self, expr : ast.Expr):
+        expr.lineno = 0
+        expr.col_offset = 0
+        result = ast.Expression(expr.value, lineno=0, col_offset = 0)
+
+        return result
+
+    def run(self, module):
+        if not self.compiled:
+            self.compile_self()
+        if len(self.init_ast.body) > 0:
+            exec(self.start_bin, module.__dict__)
+        if type(self.last_ast.body[0]) == ast.Expr:
+            return eval(self.run_bin, module.__dict__)
+        else:
+            exec(self.end_bin, module.__dict__)
 
 class LoRA_data:
     def __init__(self, name : str, weight : float):
@@ -69,9 +119,15 @@ LoRA_Weight_eval_scope = {
 }
 
 class LoRA_Weight_eval(LoRA_Weight_CMD):
-    def __init__(self, command : str):
+    def __init__(self, command : str, code_name : str = "<prompt>"):
         self.command = command
         self.is_error = False
+        from types import ModuleType
+        self.module = ModuleType("module_in_prompt")
+        self.module.__dict__.update(globals())
+        self.module.__dict__.update(LoRA_Weight_eval_scope)
+        self.bin = Runable(self.command, code_name)
+
     def getWeight(self, weight : float, progress: float, step : int, all_step : int):
 
         result = None
@@ -82,16 +138,21 @@ class LoRA_Weight_eval(LoRA_Weight_CMD):
         LoRA_Weight_eval_scope["steps"] = all_step
         LoRA_Weight_eval_scope["warmup"] = lambda x: progress / x if progress < x else 1.0
         LoRA_Weight_eval_scope["cooldown"] = lambda x: (1 - progress) / (1 - x) if progress > x else 1.0
+        self.module.__dict__.update(globals())
+        self.module.__dict__.update(LoRA_Weight_eval_scope)
         try:
-            result = eval(self.command, LoRA_Weight_eval_scope)
+            result = self.bin.run(self.module)
             try:
                 result = float(result) * weight
             except Exception:
-                raise Exception(f"LoRA Controller command result must be a numble, but got {type(result)}")
+                raise Exception(\
+                    f"LoRA Controller command result must be a numble, but got {type(result)}")
             if math.isnan(result):
-                raise Exception(f"Can not apply a NaN weight to LoRA.")
+                raise Exception(\
+                    f"Can not apply a NaN weight to LoRA.")
             if math.isinf(result):
-                raise Exception(f"Can not apply a infinity weight to LoRA.")
+                raise Exception(\
+                    f"Can not apply a infinity weight to LoRA.")
         except:
             if not self.is_error:
                 print(f"CommandError: {self.command}")
@@ -188,7 +249,7 @@ class LoRA_Switcher_Controller(LoRA_Controller_Base):
 
 def parse_step_rendering_syntax(prompt: str):
     lora_controllers : List[List[LoRA_Controller_Base]] = []
-    subprompts = re_AND.split(prompt)
+    subprompts = re_AND.split(escape_prompt(prompt))
     for i, subprompt in enumerate(subprompts):
         tmp_lora_controllers: List[LoRA_Controller_Base] = []
         step_rendering_list, pure_loratext = get_all_step_rendering_in_prompt(subprompt)
@@ -234,6 +295,21 @@ re_python_escape = re.compile(r"\$\$PYTHON_OBJ\$\$(\d+)\^")
 re_python_escape_x = re.compile(r"\$\$PYTHON_OBJX?\$\$(\d+)\^")
 re_sd_step_render = re.compile(r"\[[^\[\]]+\]")
 re_super_cmd = re.compile(r"(\\u0023|#)([^:#\[\]]+)")
+re_escape_char = re.compile(r"\\([\[\]\:\\])")
+
+def escape_prompt(prompt : str):
+    def preprossing_escape(match_pt : re.Match):
+        input_str = str(match_pt.group(1))
+        if input_str == '[':
+            return '\\u005B'
+        elif input_str == ']':
+            return '\\u005D'
+        elif input_str == ':':
+            return '\\u003A'
+        elif input_str == '\\':
+            return '\\u005C'
+        return str(match_pt.group(0))
+    return re.sub(re_escape_char, preprossing_escape, prompt)
 
 class MySearchResult:
     def __init__(self):
@@ -358,7 +434,7 @@ def get_LoRA_Controllers(prompt: str):
     if super_cmd:
         super_cmd_text = unescape_string(super_cmd.group(2)).strip()
         if super_cmd_text.startswith("cmd("):
-            Weight_Controller = LoRA_Weight_eval(super_cmd_text[4:-1])
+            Weight_Controller = LoRA_Weight_eval(super_cmd_text[4:-1], f"<prompt>, at {re.sub(re_super_cmd, '', prompt)}")
         elif super_cmd_text.startswith("decrease"):
             Weight_Controller = LoRA_Weight_decrement()
         elif super_cmd_text.startswith("increment"):
